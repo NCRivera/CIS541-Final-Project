@@ -1,0 +1,551 @@
+---
+title: "Formula 1"
+output: html_notebook
+---
+#Load the tidyverse
+```{r}
+# install.packages("tidyverse")
+library("tidyverse")
+```
+
+```{r}
+TwitterPoliticalData <- read_csv("TwitterPoliticalData.csv")
+```
+
+
+#Load the Data "Twitter Political Data"
+
+```{r}
+str(TwitterPoliticalData)
+```
+
+```{r}
+library(dplyr)
+TwitterPoliticalData <- TwitterPoliticalData %>% 
+  mutate(
+    tweettype = tweet_type
+  )
+# replace(TwitterPoliticalData,tweettype = tweet_type )
+```
+#Select the columns we need only 
+```{r}
+
+TwitterData <- select(TwitterPoliticalData, hashtags, tweettype, retweet_count, user_friends_count)
+TwitterData
+```
+
+```{r}
+summary(TwitterData)
+```
+#How many retweets on average per hashtag did each hashtag get?
+
+```{r}
+retweetonaverage<- group_by(TwitterData, hashtags)
+retweetssummary <- summarise(retweetonaverage,
+                         avgretweets=mean(retweet_count),
+sdretweets=sd(retweet_count))
+retweetssummary
+```
+#Which are the most retweeted hashtags on average? 
+
+```{r}
+arrangebyretweets <- arrange(retweetssummary,desc(avgretweets))
+arrangebyretweets
+```
+
+#The most retweeted hashtags are "FLORIDA BayCounty", "CountEveryVote", "Broward Florida" "Broward Elections" and "Florida".
+
+
+```{r}
+Mostretweetedonly <- filter(retweetssummary, hashtags == "FLORIDA BayCounty" |
+                             hashtags == "CountEveryVote" |
+                              hashtags == "Broward Florida")
+Mostretweetedonly
+```
+
+##MISSING
+#Visualize the most retweeted hashtags on average:
+```{r}
+
+```
+
+```{r}
+ggplot(data = Mostretweetedonly ) + geom_point(mapping = aes ( x = hashtags, y = avgretweets, color = hashtags))
+```
+
+#Group by Hashtag 
+#Group by hashtag to avoid duplicate hashtags and work with tidier data
+
+```{r}
+TwitterDatabyHashtagSum<- TwitterData %>%
+  group_by(hashtags) %>% 
+  summarise(
+    SumOfRetweets = sum(retweet_count)
+  )
+TwitterDatabyHashtagSum
+```
+
+
+```{r}
+TwitterDatabyHashtag<- TwitterData %>%
+  group_by(hashtags) %>% 
+  summarise(
+    n = n()
+  )
+TwitterDatabyHashtag
+```
+#View Data By Hashtag
+```{r}
+TwitterDatabyHashtag
+```
+
+
+#Republican ReTweets 
+```{r}
+RepublicanTweets <-  TwitterDatabyHashtag %>% filter(str_detect(hashtags, "maga|republican|trump|desantis| De Santis| GOP | gop | FOX|potus"))
+RepublicanTweets
+```
+#Most Popular Republican Hashtag reTweets
+
+```{r}
+arrange(RepublicanTweets, desc(n))
+```
+#The Most Popular republican hashtag retweets are: 
+"maga BrendaSnipes qanon FloridaRecount2018"
+"magaPatriots FloridaRecount"
+"maga"
+
+#Visualization of top Republican hashtag reTweets
+
+```{r}
+mostpopularrep <- filter(RepublicanTweets, hashtags == "maga BrendaSnipes qanon FloridaRecount2018" |
+         hashtags == "magaPatriots FloridaRecount"|
+         hashtags == "maga")
+mostpopularrep
+```
+
+#Top Republican reTweets hashtag excluding negative keywords
+```{r}
+RepublicanTweets %>% filter(!str_detect(hashtags, "corrupt | liar | impeach | fuck | stop | tyrant | dictator|fucktrump | nazi"))
+```
+#From this filter we can tell there are 786 hashtags retweets that are pro Republicans but that exclude negative keywords. From the original 801 Republican related retweeted hashtags,approximately 15 are negative towards republicans
+
+#Visualize top 3 Republican Hashtags
+```{r}
+ggplot (data = mostpopularrep) + geom_col(mapping = aes (x= reorder(hashtags, n), y = n, fill = hashtags), stat = "count") + 
+  theme(axis.text.x = element_blank())
+
+ggplot (data = mostpopularrep) + geom_col(mapping = aes (x= reorder(hashtags, n), y = n, fill = hashtags), stat = "count") + 
+  coord_flip() +
+  theme(axis.text.y = element_blank())
+
+```
+
+#Democrat Tweets
+#Count every time there's a democrat hashtag retweet vs a Republican hashtag reTweet
+
+```{r}
+democrattweets <- TwitterDatabyHashtag %>% filter(str_detect(hashtags, "democrat | liberal| dem|BlueWave| hilary | CNN | obama | OBAMA "))
+
+tw_data <- TwitterData %>% 
+  mutate(
+    Dem_favor_flag = 0,
+    Rep_favor_flag = 0
+  ) 
+tw_data <- tw_data %>% 
+  mutate(
+    Dem_favor_flag = replace(Dem_favor_flag, str_detect(hashtags, "democrat | liberal| dem|BlueWave| hilary | CNN | obama | OBAMA "), 1)
+  )
+tw_data <- tw_data %>% 
+  mutate(
+    Rep_favor_flag = replace(Rep_favor_flag, str_detect(hashtags, "maga|republican|trump|desantis| De Santis| GOP | gop | FOX|potus"), 1)
+  )
+tw_data
+```
+
+
+#Find the average counts per hashtag retweet: 
+
+```{r}
+tw_data2 <- select(tw_data, Dem_favor_flag, Rep_favor_flag) %>%
+      summarise(
+        avgDemCounts = mean(Dem_favor_flag),
+        avgRepCounts = mean(Rep_favor_flag))
+   tw_data2 
+```
+#On average, democrat hashtags appear more than republican hashtags. This means that more hashtags include the keywords "democrat | liberal| dem|BlueWave| hilary | CNN | obama | OBAMA", than the keywords "maga|republican|trump|desantis| De Santis| GOP | gop | FOX|potus".
+
+#Find total count of Democrat vs Republican Hashtag retweet: 
+
+```{r}
+tw_data3 <- select(tw_data, Dem_favor_flag, Rep_favor_flag) %>%
+      summarise(
+        sumDemCounts = sum(Dem_favor_flag),
+        sumRepCounts = sum(Rep_favor_flag))
+   tw_data3 
+```
+
+#From this summary we can tell that there are more instances of Democrat hashtag retweets than there are of Republican Hashtags. 
+
+#Find democrat hashtags that excluse negative terms
+
+```{r}
+democrattweetsexcluding <-  democrattweets %>% filter(!str_detect(hashtags, " fake | corrupt |socialists| CrookedHillary | emails"))
+democrattweetsexcluding
+```
+#when we exclude negative terms such as " fake | corrupt |socialists| CrookedHillary | emails" from the hashtags, there's 4 less reteewts of hashtags. This means that 1,006 democrat hashtag retweets are positive and approximately 4 democrat hashtag retweets are negative 
+
+
+
+#Looking at Hashtag retweet per User friends and followers:
+
+#Filter per user followers, user friends, hashtags, tweet type and retweet count
+
+```{r}
+TwitterUsers <- c("user_followers_count", "user_friends_count", "hashtags", "tweettype", "retweet_count")
+usersData <- TwitterPoliticalData[, TwitterUsers]
+usersData
+```
+
+
+#Filter per specific hashtags
+
+```{r}
+tweetuserdata <- usersData %>% filter(str_detect(hashtags, "democrat | liberal | obama | trump | cnn")) %>%
+  summary(tweetuserdata)
+tweetuserdata
+```
+
+```{r}
+usersData
+```
+
+#Summarise user_followers_cunt and retweet_count per hashtag
+
+```{r}
+TweetFollowersbyHashtag <- usersData %>%
+  group_by(hashtags) %>%
+summarise (
+  SumFollowerCount = sum(user_followers_count),
+  SumRetweets = sum(retweet_count)
+)
+TweetFollowersbyHashtag
+```
+#Explain your exploratory analysis, hypothesis analyses, and independent/dependent variable declaration
+
+
+
+
+
+
+
+#Normality test
+>#Testing for normality:
+
+#Variables
+>#Our independent variable: 
+># Retweets of a hashtag
+
+>#Our dependent variables: 
+
+>#Republican Hashtag Retweets
+>#Democrat Hashtag Retweets 
+
+#Hypothesis Testing
+
+#Hypothesis
+
+>#our Hypothesis: Hashtag Retweets  for Democrats are equal to Republicans
+
+>#Null Hypothesis: Hashtag Retweets  for Democrats are not equal to Republicans
+
+>#Alternative Hypothesis 
+
+```{r}
+retweetonasum<- group_by(TwitterData, hashtags)
+retweetssum <- summarise(retweetonaverage,
+                         sumtweets=sum(retweet_count))
+retweetssum 
+```
+#Are the retweet counts for the Democrat Party hashtags significantly different than the retweet counts for the Republican Party hashtags?
+
+```{r}
+#Filter group 1 and 2 
+Group1 <- filter(TwitterPoliticalData,str_detect(hashtags, "maga|republican|trump|desantis| De Santis| GOP | gop | FOX|potus"))
+Group2 <- filter(TwitterPoliticalData,str_detect(hashtags, "democrat | liberal| dem|BlueWave| hilary | CNN | obama | OBAMA "))
+```
+#Test for Normality
+```{r}
+shapiro.test(Group1$retweet_count)
+shapiro.test(Group2$retweet_count)
+```
+#Not normal distribution
+
+#Wilcox Test
+
+```{r}
+wilcox.test(Group1$retweet_count, Group2$retweet_count, PAIRED = FALSE)
+```
+#P value is smaller than alpha, we reject the null hypothesis. We support the claim that there is a significant difference between the retweet counts for the Democrat Hashtags and the Republican Hashtags. 
+
+
+
+
+#Mean and standard deviation
+ 
+```{r}
+retweetonaverage<- group_by(TwitterData, hashtags)
+retweetssummary <- summarise(retweetonaverage,
+                         avgretweets=mean(retweet_count),
+sdretweets=sd(retweet_count))
+retweetssummary
+```
+
+#Variance
+#ANOVA tEST
+#New Smaller Data Frame 
+
+H0: m1 = m2 = m3
+H1: m1  ≠ m2  ≠ m3 
+
+```{r}
+retweetssummary
+```
+
+
+
+
+```{r}
+Anova1 <- filter(TwitterPoliticalData, hashtags == "maga BrendaSnipes qanon FloridaRecount2018" |
+  hashtags == "BlueWave CountEveryVote"|
+hashtags == "Florida Elections")
+Anova1
+```
+```{r}
+aovResult <- aov(formula = retweet_count ~ hashtags, data = Anova1)
+aovResult
+```
+```{r}
+summary(aovResult)
+```
+##P-Value low we reject the null hypothesis that at all the means are equal and we conclude that at least one of the population means is different
+
+# TUckeyHSD Test
+#Compare multiple means
+```{r}
+TukeyHSD (aovResult)
+```
+##This comparision indicates that the difference between  "maga BrendaSnipes qanon FloridaRecount2018", "BlueWave CountEveryVote, and ""Florida Elections" are significantly different.
+
+#Correlation
+
+```{r}
+CorrelationRetweetsFollowers <- select(TwitterPoliticalData, c ("retweet_count", "user_followers_count"))
+pairs(CorrelationRetweetsFollowers)
+```
+#Correlation Calculation
+
+```{r}
+calculationcor <- cor(TwitterPoliticalData$retweet_count, TwitterPoliticalData$user_followers_count)
+calculationcor
+```
+># There is a weak negative correlation between retweet_count and user_followers_count, as the correlation is less than 0.05
+
+
+#Corrplot
+```{r}
+install.packages("corrplot")
+library(corrplot)
+```
+```{r}
+CorrelationRetweetsFollowersCor <- cor(CorrelationRetweetsFollowers)
+CorrelationRetweetsFollowersCor
+```
+
+```{r}
+corrplot(CorrelationRetweetsFollowersCor, method = "circle")
+```
+#Univariate Linear Regression
+```{r}
+modelretweets <- lm(user_followers_count ~ user_friends_count, data = TwitterPoliticalData)
+modelretweets
+summary(modelretweets)
+```
+
+#Visualization with Linear MOdel
+```{r}
+ggplot(data = TwitterPoliticalData, mapping = aes(x = user_friends_count, y = user_followers_count )) +
+  geom_point()+
+  geom_smooth(method = "lm") +
+  labs(title = "User Followers vs User Friends",
+       subtitle = "Linear Model Method",
+       x = "User Friends Count",
+       y = "User Followers Count"
+  )
+```
+
+```{r}
+ggplot(data = TwitterPoliticalData, mapping = aes(x = log(user_friends_count), y = log(user_followers_count) )) +
+  geom_point(alpha = 0.25)+
+  geom_smooth(method = "lm") +
+  labs(title = "User Followers vs User Friends on a Logarithmic Scale",
+       subtitle = "Linear Model Method",
+       x = "User Friends Count, Log",
+       y = "User Followers Count, Log"
+  )
+```
+
+
+#Prediction with Linear Model
+>#What would be the user followers when the user friends are 100?
+
+```{r}
+#Correct Data Types
+TwitterPoliticalDataCorrected <- read_csv("TwitterPoliticalData.csv",
+                                          col_types = cols(
+                                            user_friends_count = col_integer(),
+                                            user_followers_count = col_integer())
+)
+```
+
+
+```{r}
+predictionofvariable <- data.frame(user_friends_count = c(100))
+```
+
+```{r}
+predictedPositionofTweets <- predict(modelretweets,predictionofvariable)
+cat("At 100 user friends, the followers count is", predictedPositionofTweets )
+
+```
+
+#Verification 
+```{r}
+verification_1 <- TwitterPoliticalDataCorrected %>% 
+  filter(user_friends_count == 100) %>% 
+  group_by(user_friends_count) %>% 
+  summarise(
+    Avg_UFC = mean(user_followers_count),
+    STDev_UFC = sd(user_followers_count)
+  )
+
+cat("The predicted value is outside the models range of prediction indicating the lack of a significant value.")
+```
+
+
+#Loess Method
+
+```{r}
+loess_model_data <- TwitterPoliticalData %>% 
+  select(user_friends_count, user_followers_count) %>% 
+  slice(1:1000)
+
+loessretweets <- loess( user_followers_count ~user_friends_count, data = loess_model_data)
+loessretweets
+summary(loessretweets)
+```
+
+#Prediction with Loess
+##What would be the user followers when the user friends are 100?
+
+```{r}
+predictionofvariable <- data.frame(user_friends_count = c(100))
+```
+
+```{r}
+predictedPositionofTweets <- predict(loessretweets,predictionofvariable)
+cat("At 100 user friends, the followers count is", predictedPositionofTweets )
+```
+
+
+```{r}
+verification_2 <- TwitterPoliticalDataCorrected %>% 
+  filter(user_friends_count == 100) %>% 
+  group_by(user_friends_count) %>% 
+  summarise(
+    Avg_UFC_loess = mean(user_followers_count),
+    STDev_UFC_loess = sd(user_followers_count)
+  )
+verification_2
+cat("The predicted value is within the models range of prediction indicating there is evidence the loess model is a significantone.")
+```
+
+#Visualization with Loess Method
+
+```{r}
+ggplot(data = loess_model_data, mapping = aes(x = user_friends_count, y = user_followers_count )) +
+  geom_point()+
+  geom_smooth(method = "loess") +
+  labs(title = "User Followers vs User Friends",
+       subtitle = "Loess Model Method",
+       x = "User Friends Count",
+       y = "User Followers Count"
+      )
+```
+```{r}
+# install.packages("caret")
+library(caret)
+```
+
+## Load caTools library
+
+```{r}
+library(caTools)
+```
+
+```{r}
+data_model_building <- TwitterPoliticalData %>% 
+  slice(1:1000)
+
+set.seed(111)
+sample <- sample.split(data_model_building$user_friends_count, SplitRatio = 0.75)
+train <- subset(data_model_building, sample == TRUE)
+test <- subset(data_model_building, sample == FALSE)
+```
+
+## Building a Linear Model: Given the GOal Difference, predict the position
+
+```{r}
+linear_model <- lm(formula = user_followers_count ~ user_friends_count, data = train)
+summary(linear_model)
+```
+
+```{r}
+predicted <- predict(linear_model, test)
+
+twitter_error <- data.frame(
+  user_friends_count = test$user_friends_count, 
+  Predictedvalues = predicted
+)
+
+twitter_error
+```
+
+## Mean Absolute Errors
+
+```{r}
+mae <- MAE(twitter_error$user_friends_count, twitter_error$Predictedvalues)
+cat("Mean Absolute Error:", mae)
+```
+
+## MSE
+
+```{r}
+# mse <- MSE(twitter_error$user_friends_count, twitter_error$Predictedvalues)
+# cat("Mean Squared Error:", mse)
+```
+
+## RSME
+
+```{r}
+rmse <- RMSE(twitter_error$user_friends_count, twitter_error$Predictedvalues)
+rmse
+```
+
+
+## R-Squared
+
+```{r}
+R2 <- R2(twitter_error$user_friends_count, twitter_error$Predictedvalues, form = "traditional")
+R2
+```
